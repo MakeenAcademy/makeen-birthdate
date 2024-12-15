@@ -1,8 +1,12 @@
 <?php
 
 use App\Http\Controllers\FormController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/test', function () {
+    return 'This is a test route!';
+});
 Route::prefix('forms')->group(function () {
     Route::get('/', [FormController::class, 'index']);          // لیست فرم‌ها
     Route::get('/{id}', [FormController::class, 'show']);       // نمایش فرم خاص
