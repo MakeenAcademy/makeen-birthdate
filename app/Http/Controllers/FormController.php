@@ -7,14 +7,12 @@ use Illuminate\Http\Request;
 
 class FormController extends Controller
 {
-    // لیست تمام فرم‌ها
     public function index()
     {
         $forms = Form::all();
         return response()->json($forms);
     }
 
-    // نمایش یک فرم خاص
     public function show($id)
     {
         $form = Form::find($id);
@@ -24,9 +22,17 @@ class FormController extends Controller
         return response()->json($form);
     }
 
-    // ذخیره یک فرم جدید
     public function store(Request $request)
     {
+        $existingUser = Form::where('first_name', $request->first_name)
+            ->where('last_name', $request->last_name)
+            ->first();
+
+        if ($existingUser) {
+            return response()->json(['error' => 'This combination of first name and last name already exists'], 400);
+        }
+
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -39,20 +45,19 @@ class FormController extends Controller
             'photo' => 'nullable|image|max:2048',
         ]);
 
-        // آپلود تصویر در صورت وجود
-        if ($request->hasFile('photo')) {
-            $validated['photo'] = $request->file('photo')->store('photos', 'public');
-        }
 
         $form = Form::create($validated);
+
+        $this->handleImageUpload($request, $form);
+
 
         return response()->json([
             'message' => 'Form created successfully',
             'form' => $form
         ], 201);
+
     }
 
-    // به‌روزرسانی یک فرم
     public function update(Request $request, $id)
     {
         $form = Form::find($id);
@@ -72,10 +77,7 @@ class FormController extends Controller
             'photo' => 'nullable|image|max:2048',
         ]);
 
-        // آپلود تصویر در صورت وجود
-        if ($request->hasFile('photo')) {
-            $validated['photo'] = $request->file('photo')->store('photos', 'public');
-        }
+        $this->handleImageUpload($request, $form);
 
         $form->update($validated);
 
@@ -85,7 +87,6 @@ class FormController extends Controller
         ]);
     }
 
-    // حذف یک فرم
     public function destroy($id)
     {
         $form = Form::find($id);
@@ -96,5 +97,21 @@ class FormController extends Controller
         $form->delete();
 
         return response()->json(['message' => 'Form deleted successfully']);
+    }
+
+    private function handleImageUpload(Request $request, Form $form, string $collection = 'image'): void
+    {
+        if ($request->hasFile('image')) {
+            $form->clearMediaCollection($collection);
+            $form->addMedia($request->file('image'))->toMediaCollection($collection);
+        }
+    }
+
+    public function imageUpdate(Request $request, int $id): JsonResponse
+    {
+        $form = Form::findOrFail($id);
+        $this->handleImageUpload($request, $form, 'image');
+
+        return response()->json(['message' => 'Form image updated successfully.']);
     }
 }
